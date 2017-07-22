@@ -1,0 +1,48 @@
+###Code to read the file:
+read_ext_tracks <-function(file="ebtrk_atlc_1988_2015.txt",...,widths=NULL,
+                          colnames=NULL,degW=TRUE){
+   
+widths <- c(7, 10, 2, 2, 3, 5, 5, 6, 4, 5, 4, 4, 5, 3, 4, 3, 3, 3,
+                           4, 3, 3, 3, 4, 3, 3, 3, 2, 6, 1)
+colnames <- c("storm_id", "storm_name", "month", "day",
+                              "hour", "year", "latitude", "longitude",
+                           "max_wind", "min_pressure", "rad_max_wind",
+                           "eye_diameter", "pressure_1", "pressure_2",
+                paste("radius_34", c("ne", "se", "sw", "nw"), sep = "_"),
+                paste("radius_50", c("ne", "se", "sw", "nw"), sep = "_"),
+                paste("radius_64", c("ne", "se", "sw", "nw"), sep = "_"),
+                             "storm_type", "distance_to_land", "final"
+                            )
+    
+                          
+ext_tracks <- readr::read_fwf("ebtrk_atlc_1988_2015.txt", 
+                           readr::fwf_widths(widths, colnames),
+                           na = "-99")
+   
+if (degW) {ext_tracks$longitude<- -ext_tracks$longitude }
+
+ext_tracks =mutate(ext_tracks,newdate = lubridate::ymd_h(paste(year,month,day,hour,sep="")),
+storm_id1 = paste0(storm_name,"-",year))
+
+gather_cols<-names(ext_tracks)[dplyr::contains(match="radius_",vars=names(ext_tracks))]
+
+tidy_tracks<-tidyr::gather_(ext_tracks,key_col="speed_quadrant",
+                              value_col="wind_radius",gather_cols=gather_cols,
+                              na.rm=FALSE,factor_key=FALSE)
+
+tidy_tracks<-tidyr::separate_(tidy_tracks,col="speed_quadrant",
+                                into=c("drop","wind_speed","quadrant"),
+                                sep="_",remove=TRUE,convert=TRUE)
+
+tidy_tracks$drop<-NULL
+tidy_tracks = spread(tidy_tracks,quadrant,wind_radius)
+
+tidy_tracks <- subset(tidy_tracks,select=c(storm_id1,newdate,latitude,longitude,wind_speed,ne,nw,se,sw))
+
+tidy_tracks1 <- subset(tidy_tracks,storm_id1 == "KATRINA-2005" & latitude == 29.5)
+
+    
+return(tidy_tracks1)
+}
+
+https://github.com/JJNewkirk/hurRicane/blob/master/R/hurricane_geocode.R
