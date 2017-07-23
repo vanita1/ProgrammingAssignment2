@@ -1,0 +1,42 @@
+
+GeomKatrina<-ggplot2::ggproto("GeomKatrina",GeomPolygon,
+                      
+                       required_aes = c("x","y","ne","nw","se","sw","wind_speed"
+                                        ),
+                       
+                       default_aes = aes(fill="red",
+                                         colour="red",
+                                         size=0.5,
+                                         linetype=1,
+                                         alpha=.5,
+                                         arc_step=1,
+                                         scale_radii=1),
+                                         draw_key = draw_key_polygon,
+                  draw_panel = function(data1,panel_scales,coord){
+
+                   
+coords <- coord$transform(data, panel_scales)
+
+data <- data %>% mutate_(ne = ~ne*1852*scale_radii,se = ~se*1852*scale_radii,
+                                                                    sw = ~sw*1852*scale_radii,
+                                                                    nw = ~nw*1852*scale_radii )
+
+for (i in 1:nrow(data)) {
+
+l_ne <- base::data.frame(geosphere::destPoint(p = c(data[i,]$x, data[i,]$y),b = 1:90,d = data[i,]$ne))
+l_nw <- base::data.frame(geosphere::destPoint(p = c(data[i,]$x, data[i,]$y),b = 270:360,d = data[i,]$nw))                                                                    
+l_se <- base::data.frame(geosphere::destPoint(p = c(data[i,]$x, data[i,]$y),b = 90:180,d = data[i,]$se))
+l_sw <- base::data.frame(geosphere::destPoint(p = c(data[i,]$x, data[i,]$y),b = 180:270,d = data[i,]$sw))
+
+l_points <- dplyr::bind_rows(list(l_nw, l_ne, l_se, l_sw))  }
+
+l_points <- l_points %>% dplyr::rename_('x' = 'lon','y' = 'lat' )
+
+coords_df <- coord$transform(l_points, panel_scales)
+
+grid::polygonGrob(
+      coords_df$x, coords_df$y,
+      default.units = "native",
+      gp = grid::gpar()
+    
+  }
